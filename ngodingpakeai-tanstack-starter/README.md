@@ -1,120 +1,305 @@
-# Base TanStack Postgres — ngodingpakeai starters
+# Dewandra Grup — Aplikasi Web Lima Toko
 
-The TanStack Start + PostgreSQL edition of the base starter: **TanStack Start (Vite + Nitro), Drizzle ORM, PostgreSQL, Better Auth, Tailwind CSS, shadcn/ui, and Motion**. It includes working accounts, a blank protected app, an authenticated Notes API demonstrating the backend standard, project skills, and Context7 configuration.
+Aplikasi web terpusat untuk **Dewandra Grup**: etalase lima unit toko (pupuk, bangunan, ATK, listrik, furniture), katalog produk, checkout pesanan, kasir digital, dashboard pemilik, serta pengelolaan stok dan pengguna.
 
-This is an independent starter. Use it as the foundation for your dashboard, chatbot, or another app.
+Aplikasi ini dibangun di atas starter **TanStack Start + PostgreSQL (NgodingPakeAI)** dengan stack yang sudah ditentukan: TanStack Start, Drizzle ORM, PostgreSQL, Better Auth, Tailwind CSS v4, shadcn/ui, dan Motion.
 
-## Start here
+> Kebutuhan produk lengkap: [`../dewandra-grup-PRD.md`](../dewandra-grup-PRD.md).
 
-Install **Node.js 22.12 or newer** and **Docker Desktop**, then start Docker Desktop. Open this project folder in your AI editor and prompt:
+## Daftar isi
 
-> Build a personal reading list with accounts. Set up this project, run it, and let each person manage their own books.
+- [Unit toko](#unit-toko)
+- [Fitur](#fitur)
+- [Status implementasi](#status-implementasi)
+- [Teknologi](#teknologi)
+- [Prasyarat](#prasyarat)
+- [Menjalankan proyek](#menjalankan-proyek)
+- [Environment](#environment)
+- [Perintah npm](#perintah-npm)
+- [Database](#database)
+- [Struktur proyek](#struktur-proyek)
+- [Rute aplikasi](#rute-aplikasi)
+- [Peran dan akses](#peran-dan-akses)
+- [Pengujian dan kualitas](#pengujian-dan-kualitas)
+- [Deployment](#deployment)
+- [Dokumentasi tambahan](#dokumentasi-tambahan)
 
-The agent instructions make local setup part of the first app-building prompt, then continue your feature. No separate database setup prompt is needed. See [the first-run workflow](docs/local-development.md).
+## Unit toko
 
-Or run inside this folder:
+| Toko | Kategori | Slug |
+| ---- | -------- | ---- |
+| Rezeki Tani | Pupuk & pertanian | `pupuk` |
+| Central Jaya Bangunan | Material bangunan | `bangunan` |
+| Dewi Foto Copy | Alat tulis kantor | `atk` |
+| Gemilang Elektronik | Peralatan listrik | `listrik` |
+| Kasandra Furniture | Mebel & interior | `furniture` |
+
+Identitas perusahaan (nama, telepon, WhatsApp, jam buka, rekening, logo toko) dipusatkan di `src/config/dewandra.ts`. Data contoh toko, produk, pemasok, dan transaksi ada di `scripts/seed.mjs`.
+
+## Fitur
+
+**Halaman publik**
+
+- **Beranda** — hero, lima layanan toko, sorotan profil, dan tombol WhatsApp.
+- **Katalog** — pencarian nama/kode barang, filter per toko, detail produk, status stok (`Tersedia`, `Stok menipis`, `Habis`), dan tambah ke keranjang.
+- **Checkout** — data pembeli, ambil di toko atau kirim, pembayaran tunai/transfer/QRIS, unggah bukti bayar (maks. 2 MB), dan nomor pesanan.
+- **Lacak pesanan** — cek status dengan kode pesanan + nomor WhatsApp.
+- **Profil & kontak** — cerita perusahaan, galeri, alamat/jam buka, formulir kontak, dan WhatsApp.
+
+**Halaman internal (login)**
+
+- **Dashboard pemilik** — ringkasan penjualan, pembelian, nilai persediaan, grafik tren enam bulan, filter toko/periode, dan peringatan stok menipis.
+- **Kasir** — pilih toko, pindai barcode/SKU atau cari manual, keranjang, pembayaran tunai/transfer, struk, dan pembatalan transaksi tanpa mengubah stok.
+- **Katalog pemilik** — daftar produk internal per toko.
+- **Pesanan** — daftar pesanan masuk, cari/filter status, verifikasi bukti bayar, dan ubah status pesanan.
+- **Stok & pembelian** — catat pembelian dari pemasok, penyesuaian stok, dan peringatan stok minimum.
+- **Riwayat** — penjualan/pembelian per toko, filter tanggal/toko, detail transaksi, dan jejak perubahan stok.
+- **Pengguna** — kelola akun kasir/pemilik dan catatan aktivitas.
+- **Akun** — sign-up, sign-in, sign-out dengan sesi server-side; role `admin` untuk pemilik dan role default `user` untuk kasir.
+
+## Status implementasi
+
+Terhubung penuh ke PostgreSQL dan API server:
+
+- Autentikasi dan sesi (Better Auth), migrasi, seed, dan role.
+- Katalog publik (`getCatalogFn` → `dewandra.service.server.ts`).
+- Checkout, lacak pesanan, unggah/hapus bukti bayar, serta pengelolaan pesanan (`src/services/orders.service.server.ts`, `src/routes/api/orders/**`).
+
+Halaman berikut masih memakai **data contoh di sisi klien** dan perlu disambungkan ke service/database pada pengembangan berikutnya:
+
+- Dashboard pemilik (`dashboard.page.jsx`) — service agregasi `getDashboardData()` sudah tersedia, tinggal dipakai sebagai loader.
+- Kasir (`kasir.page.jsx`), stok (`stok.page.jsx`), riwayat (`riwayat.page.jsx`), dan pengguna (`pengguna.page.jsx`).
+- Formulir kontak (`profil-kontak.page.jsx`) — service `createContactMessage()` dan schema Zod sudah tersedia, tetapi belum ada route API yang memanggilnya.
+- Data contoh pada halaman-halaman tersebut bukan transaksi nyata; jangan dipakai untuk laporan produksi sampai terhubung ke database.
+
+## Teknologi
+
+| Lapisan | Teknologi |
+| ------- | --------- |
+| Framework | TanStack Start 1.168, TanStack Router 1.170, React 19, Vite 8, Nitro |
+| Bahasa | TypeScript 5.9 (strict), JavaScript untuk halaman prototipe |
+| UI | Tailwind CSS v4, shadcn/ui + Radix, Lucide, Motion |
+| Data | PostgreSQL 17, Drizzle ORM 0.45, drizzle-kit, node-postgres |
+| Auth | Better Auth 1.7 (email/password, sesi database, admin plugin) |
+| Validasi | Zod 4 |
+| Kualitas | ESLint 9, Prettier, Node test runner, Playwright, GitHub Actions |
+| Operasional | Docker Compose (database lokal), Dockerfile multi-stage |
+
+## Prasyarat
+
+- **Node.js 22.12+** (lihat `.nvmrc`)
+- **Docker Desktop** untuk database lokal (opsional jika memakai PostgreSQL eksternal)
+- npm (repo memakai `package-lock.json`)
+
+## Menjalankan proyek
 
 ```sh
+cd ngodingpakeai-tanstack-starter
 npm run setup
+npm run db:seed
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000); it sends you to sign-in, where you create your own account.
+`npm run setup` akan:
 
-Setup installs pinned dependencies, generates a private auth secret and database password, starts PostgreSQL 17 through `compose.dev.yaml` in Docker, waits for it to be healthy, applies migrations, and checks the connection. Values live in ignored `.env.local`; repeated setup preserves existing values and database records.
+1. Memasang dependency sesuai lockfile.
+2. Membuat `.env.local` berisi `BETTER_AUTH_SECRET`, kredensial database, dan port acak.
+3. Menjalankan PostgreSQL 17 lewat `compose.dev.yaml` dan menunggu sehat.
+4. Menerapkan migrasi Drizzle dan memeriksa koneksi.
 
-The database is published only on loopback. Fresh setup selects an available high port and records it in `.env.local`. Its data lives in a named Docker volume. Each fresh copy gets a unique Compose project name and its own credentials. To stop it while keeping data, run `npm run db:down`; `npm run db:up` starts it again. Different local copies need different `POSTGRES_PORT` values if running simultaneously.
+Buka <http://localhost:3000>. Buat akun melalui halaman sign-up, lalu jadikan pemilik:
 
-## Already have PostgreSQL?
-
-Set a connection string in `.env.local` **before** running setup:
-
-```dotenv
-DATABASE_URL=postgresql://user:password@host:5432/database
+```sh
+npm run role:set -- email@anda.com admin
 ```
 
-Then run the same setup and dev commands. A supplied connection bypasses Docker and migrations target that database. Use a database dedicated to this app. Follow your provider's TLS requirements; never disable certificate checks to make a connection work.
+`npm run db:seed` mengisi lima toko, sepuluh produk contoh, pemasok, dan transaksi contoh. Seed bersifat idempoten (aman dijalankan ulang).
 
-If your provider supplies separate pooled and direct connections, use the pooled URL for `DATABASE_URL` and the direct URL for `MIGRATION_DATABASE_URL`. Migration commands prefer the latter. Do not commit either URL.
+**Memakai PostgreSQL eksternal:** isi `DATABASE_URL` di `.env.local` sebelum setup. Jika penyedia memisahkan koneksi pooler dan direct, isi juga `MIGRATION_DATABASE_URL`. Jangan menonaktifkan verifikasi TLS.
 
-## Build with a prompt
+## Environment
 
-Enable Context7 once in your editor; see [AI editor setup](docs/ai-workflow.md). Then try:
+Nilai privat disimpan di `.env.local` (diabaikan git). Contoh ada di `.env.example`.
 
-> Read AGENTS.md and use build-feature. Create a personal reading list. Let me add books, mark them finished, and delete them. Each account should only see its own books. Use Drizzle with PostgreSQL and Context7 for current documentation. Build the smallest working version and test it.
+| Variabel | Wajib | Keterangan |
+| -------- | ----- | ---------- |
+| `BETTER_AUTH_SECRET` | Ya | Kunci acak untuk sesi/token. Dibuat otomatis oleh setup. |
+| `BETTER_AUTH_URL` | Ya | Origin aplikasi, mis. `http://localhost:3000`. Harus sama dengan URL yang dibuka. |
+| `DATABASE_URL` | Ya | Koneksi runtime PostgreSQL. Kosongkan agar setup Docker otomatis. |
+| `MIGRATION_DATABASE_URL` | Tidak | Koneksi langsung untuk migrasi bila `DATABASE_URL` memakai pooler. |
+| `POSTGRES_PORT` | Tidak | Port database lokal tetap. Default: port tinggi acak. |
 
-No model API key is required by the app. The AI integration supports your coding workflow; runtime chatbot features belong in a derivative.
+Jangan commit `.env.local`, kredensial, atau connection string.
 
-## What is included
+## Perintah npm
 
-| Area           | Included                                                                     |
-| -------------- | ---------------------------------------------------------------------------- |
-| App            | TanStack Start file routes, Vite, Nitro node server, strict TypeScript       |
-| Data           | Drizzle ORM, node-postgres connection pool, PostgreSQL migrations            |
-| Local database | PostgreSQL 17 in Docker, persistent volume, random credentials, healthcheck  |
-| Accounts       | Better Auth signup/signin/signout, real server-side sessions                 |
-| Roles          | Better Auth access control, permission-guarded API routes and admin page     |
-| UI             | Tailwind v4, shadcn/ui primitives, Lucide icons, Motion with reduced motion  |
-| AI workflow    | AGENTS.md + agent.md, four project skills, Context7 configs for four editors |
-| Quality        | Lint, types, formatting, real PostgreSQL tests, browser auth tests, CI       |
-| Derivatives    | Safe source copier retaining PostgreSQL tooling and base version metadata    |
+| Perintah | Fungsi |
+| -------- | ------ |
+| `npm run setup` | Install, buat env, jalankan PostgreSQL, migrasi, diagnosa |
+| `npm run dev` | Siapkan database lalu jalankan dev server |
+| `npm run build` | Build produksi ke `.output` |
+| `npm start` | Jalankan hasil build |
+| `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
+| `npm run check` | Lint + typecheck + unit/integration test |
+| `npm test` | Test setup, migrasi, dan isolasi data dengan PostgreSQL disposable |
+| `npm run test:e2e` | Test browser Playwright (port 3101) |
+| `npm run test:setup` | Verifikasi setup baru, retry, dan persistensi data |
+| `npm run format` | Format Prettier |
+| `npm run doctor` | Cek env, database, tabel auth, dan file AI |
+| `npm run db:generate` | Buat SQL migrasi setelah ubah schema |
+| `npm run db:migrate` | Terapkan migrasi |
+| `npm run db:seed` | Isi data contoh Dewandra Grup |
+| `npm run db:studio` | Buka Drizzle Studio |
+| `npm run db:up` / `db:down` / `db:status` / `db:logs` | Kelola database Docker |
+| `npm run role:set -- <email> <role>` | Ubah role akun (`admin`/`user`) |
 
-## Backend example
+Test membutuhkan Docker karena menjalankan PostgreSQL disposable terpisah; database aplikasi tidak tersentuh. Untuk e2e pertama kali: `npx playwright install chromium`, lalu `npm run build`.
 
-The [Notes API](docs/backend.md) demonstrates the standard: **API routes → Better Auth session checks and validation → services → Drizzle/PostgreSQL**. It supports real CRUD with per-account ownership. Database queries live in `src/services/`; each Drizzle table lives in its own file under `src/db/schema/`. The feature-building skill follows this structure for future prompts.
+## Database
 
-The same doc covers **role-based access**: `src/lib/permissions.ts` declares resources and roles, `/api/admin/notes` and `/admin` are guarded by permissions rather than a session alone, and `npm run role:set -- you@example.com admin` promotes an account. Signup can never set a role.
+Migrasi berada di `drizzle/` dan **wajib ikut di-commit** bersama `drizzle/meta`:
 
-## Commands
+| Migrasi | Isi |
+| ------- | --- |
+| `0000_auth.sql` | Tabel Better Auth (user, session, account, verification) |
+| `0001_notes.sql` | Tabel notes contoh |
+| `0002_roles.sql` | Kolom role |
+| `0003_known_lenny_balinger.sql` | Toko, produk, pemasok, penjualan, pembelian, mutasi stok, kontak, proyek, profil perusahaan, log aktivitas |
+| `0004_chunky_bullseye.sql` | Pesanan (`orders`, `order_items`) + enum fulfillment/status dan metode bayar QRIS |
 
-| Command                       | What it does                                                             |
-| ----------------------------- | ------------------------------------------------------------------------ |
-| `npm run setup`               | Install, configure, start local PostgreSQL if needed, migrate, diagnose  |
-| `npm run dev`                 | Prepare the database and start the development app                       |
-| `npm run db:up`               | Start this copy's local PostgreSQL; skip for an external connection      |
-| `npm run db:status`           | Inspect this copy's database container                                   |
-| `npm run db:logs`             | Read the last 80 database log lines                                      |
-| `npm run test:setup`          | Verify a fresh setup, retries, and data persistence in a disposable copy |
-| `npm run db:down`             | Stop local containers while preserving the volume                        |
-| `npm run doctor`              | Check config, database connection, auth tables, and AI files             |
-| `npm run db:generate`         | Generate migration SQL after a schema edit                               |
-| `npm run db:migrate`          | Apply committed migrations                                               |
-| `npm run role:set`            | Grant a role: `npm run role:set -- you@example.com admin`                |
-| `npm run db:studio`           | Inspect the database with Drizzle Studio                                 |
-| `npm run check`               | Lint, typecheck, and tests against disposable PostgreSQL                 |
-| `npm run build` / `npm start` | Build and serve the production app                                       |
-| `npm test`                    | Run setup, copying, and real PostgreSQL migration tests                  |
-| `npm run test:e2e`            | Run browser tests against a separate PostgreSQL container                |
-| `npm run format`              | Format source and docs                                                   |
+Schema Drizzle ada di `src/db/schema/` (satu tabel per file, diekspor dari `index.ts`), mencakup: `stores`, `products`, `suppliers`, `sales`, `sale_items`, `purchases`, `purchase_items`, `stock_movements`, `orders`, `order_items`, `contact_messages`, `projects`, `company_profile`, `activity_logs`, serta tabel auth.
 
-Tests require Docker even if your app uses a hosted database. They launch a unique disposable PostgreSQL server, inject its URL into the test processes, and remove it afterward. Your app database is never used. Browser tests use port **3101** against the production build in `.output`; first run `npx playwright install chromium`, then `npm run build`.
+Alur perubahan schema:
 
-## Customize and extend
+```sh
+# 1. edit src/db/schema/<tabel>.ts
+npm run db:generate   # 2. periksa SQL baru di drizzle/
+npm run db:migrate    # 3. terapkan
+```
 
-- Identity: `starter.config.json` and `src/config/site.ts`.
-- Your first feature: replace the placeholder in `src/routes/_protected/app.tsx` (the root `/` only redirects there). `npm run doctor` reminds you until it is gone.
-- UI tokens: `src/styles/globals.css`.
-- Tables: `src/db/schema/` (export tables from `index.ts`); use `pgTable`, PostgreSQL booleans, and timestamps.
-- Add UI primitives: `npx shadcn@4.21.0 add dialog`.
-- Create another derivative: `npm run create:variant -- dashboard ../my-dashboard`.
+Jangan menulis ulang migrasi yang sudah diterapkan atau melakukan reset destruktif.
 
-See [architecture](docs/architecture.md), [derivatives](docs/derivatives.md), [prompts](docs/prompts.md), and [changes from the Next.js base](docs/variant.md).
+## Struktur proyek
 
-## Hosting
+```text
+.
+├── .agents/skills/        # Skill agen: starter-setup, build-feature, dev-database, create-variant
+├── .github/workflows/     # CI (lint, typecheck, test, build)
+├── drizzle/               # SQL migrasi + meta
+├── docs/                  # Dokumentasi arsitektur, backend, deployment, dll.
+├── e2e/                   # Test Playwright
+├── images/                # Foto toko sumber
+├── public/stores/         # Logo toko untuk website
+├── scripts/               # setup, migrate, seed, doctor, test, database
+├── src/
+│   ├── components/        # UI shell, auth, shadcn primitives
+│   ├── config/            # Identitas perusahaan (dewandra.ts) dan site
+│   ├── db/                # Pool node-postgres + schema Drizzle
+│   ├── features/sunlit/   # Halaman dan komponen UI per fitur
+│   ├── lib/               # auth, session, permission, API helper, env
+│   ├── routes/            # File route TanStack (halaman + API)
+│   ├── services/          # Query Drizzle & logika domain (server-only)
+│   ├── styles/            # Token Tailwind + tema sunlit-ledger
+│   └── validators/        # Schema Zod
+├── tests/                 # Test Node (setup, database, variant)
+├── AGENTS.md              # Panduan kerja agen di repo ini
+├── compose.dev.yaml       # PostgreSQL lokal
+├── Dockerfile             # Build produksi + target migrator
+└── starter.config.json    # Identitas starter/aplikasi
+```
 
-Use a Node.js-compatible host and persistent PostgreSQL service. Set private `DATABASE_URL`, `BETTER_AUTH_SECRET`, and public `BETTER_AUTH_URL` settings. Apply migrations once per release, then build and start. The app itself does not need a persistent database file. For serverless or multiple instances, use an appropriate database pooler and connection limits. See [deployment](docs/deployment.md).
+Konvensi penting:
 
-For container hosts, `Dockerfile` builds the app (`docker build -t my-app .`) and a release migration job (`docker build --target migrator -t my-app-migrate .`). It is for production only; local development still uses `npm run dev` with `compose.dev.yaml`.
+- File `*.server.ts` khusus server; import dari browser akan menggagalkan build.
+- Query domain hanya di `src/services/`, bukan di route/komponen/loader.
+- Route API tipis: autentikasi (`withApiSession`) → validasi Zod → service.
+- Tabel baru: file terpisah di `src/db/schema/` dan diekspor dari `index.ts`.
 
-Email verification, password recovery email, social login, billing, and AI provider calls are not configured. Add only the services your product needs.
+## Rute aplikasi
 
-## Troubleshooting
+**Publik**
 
-- **Docker not found / cannot connect:** install and start Docker Desktop, then run setup again.
-- **Your saved database port is occupied:** before first setup, optionally set `POSTGRES_PORT=5434` in `.env.local`. For an existing local setup, update both `POSTGRES_PORT` and the port inside `DATABASE_URL`, then restart the database.
-- **Database password rejected:** verify your private settings. Changing `POSTGRES_PASSWORD` does not change a password inside an existing Docker volume. Restore the original value or deliberately rotate the database credential; do not delete the volume to fix it.
-- **App port changed:** set `BETTER_AUTH_URL=http://localhost:3001` in `.env.local`, then run `npm run dev -- --port 3001`.
-- **Missing auth tables:** run `npm run db:migrate`.
-- **Connection fails:** run `npm run doctor`. Check the URL, network rules, TLS, and credentials. Connection strings are kept out of diagnostic output.
+| Path | Halaman |
+| ---- | ------- |
+| `/` | Beranda lima layanan |
+| `/katalog` | Katalog produk + filter toko |
+| `/checkout` | Checkout pesanan |
+| `/lacak-pesanan` | Lacak pesanan (`?kode=...`) |
+| `/profil-kontak` | Profil perusahaan & kontak |
+| `/sign-in`, `/sign-up` | Autentikasi |
 
-MIT. See [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md).
+**Internal (perlu login)**
+
+| Path | Halaman |
+| ---- | ------- |
+| `/dashboard` | Dashboard pemilik |
+| `/kasir` | Kasir transaksi |
+| `/katalog-pemilik` | Katalog internal |
+| `/pesanan` | Kelola pesanan masuk |
+| `/stok` | Stok, pembelian, penyesuaian |
+| `/riwayat` | Riwayat transaksi |
+| `/pengguna` | Kelola pengguna |
+| `/admin` | Contoh halaman khusus admin |
+
+**API**
+
+| Endpoint | Fungsi |
+| -------- | ------ |
+| `/api/auth/*` | Handler Better Auth |
+| `/api/orders` | Buat & daftar pesanan |
+| `/api/orders/lookup` | Cari pesanan (kode + telepon) |
+| `/api/orders/$id` | Detail/ubah status pesanan |
+| `/api/orders/proof`, `/api/orders/$id/proof` | Unggah/hapus bukti bayar |
+| `/api/notes`, `/api/admin/notes` | Contoh CRUD notes dan permission admin |
+
+## Peran dan akses
+
+- Default akun baru: role `user` (tidak bisa mengakses data orang lain).
+- Pemilik: `npm run role:set -- email@anda.com admin`. Role `admin` membuka resource tambahan di `src/lib/permissions.ts` dan halaman `/admin`.
+- Sign-up tidak pernah bisa menetapkan role sendiri.
+- Target PRD berikutnya: pembatasan kasir per toko (owner melihat semua toko, kasir hanya tokonya). Saat ini pembatasan tersebut belum diterapkan di semua halaman.
+
+## Pengujian dan kualitas
+
+```sh
+npm run check        # lint + typecheck + test (butuh Docker)
+npm run build
+npm run test:e2e     # setelah build dan install chromium
+npm run doctor       # diagnosa cepat
+```
+
+- Test database memakai PostgreSQL disposable dengan port unik.
+- Test browser memakai port `3101` dan build produksi di `.output`.
+- CI di `.github/workflows/ci.yml` menjalankan lint, typecheck, test, dan build.
+
+## Deployment
+
+1. Siapkan PostgreSQL persisten dan isi `DATABASE_URL`, `BETTER_AUTH_SECRET`, serta `BETTER_AUTH_URL` publik.
+2. Terapkan migrasi sekali per rilis: `npm run db:migrate` (atau image target `migrator`).
+3. Build dan jalankan: `npm run build && npm start`.
+
+Docker:
+
+```sh
+docker build -t dewandra-grup .
+docker build --target migrator -t dewandra-grup-migrate .
+```
+
+Dockerfile hanya untuk produksi; pengembangan lokal tetap memakai `npm run dev` + `compose.dev.yaml`. Untuk beberapa instance, gunakan pooler PostgreSQL dan batasi koneksi. Detail ada di [`docs/deployment.md`](docs/deployment.md).
+
+## Dokumentasi tambahan
+
+| Dokumen | Isi |
+| ------- | --- |
+| [`docs/architecture.md`](docs/architecture.md) | Arsitektur aplikasi |
+| [`docs/backend.md`](docs/backend.md) | Pola API, service, validasi, role |
+| [`docs/local-development.md`](docs/local-development.md) | Alur setup & database lokal |
+| [`docs/deployment.md`](docs/deployment.md) | Deployment produksi |
+| [`docs/ai-workflow.md`](docs/ai-workflow.md) | Setup Context7 dan skill agen |
+| [`docs/prompts.md`](docs/prompts.md) | Contoh prompt pengembangan |
+| [`docs/derivatives.md`](docs/derivatives.md) | Membuat varian dari starter |
+| [`docs/variant.md`](docs/variant.md) | Perbedaan dari base Next.js |
+
+## Lisensi
+
+MIT. Lihat [`LICENSE`](LICENSE) dan [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
