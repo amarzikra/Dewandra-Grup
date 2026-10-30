@@ -1,0 +1,9 @@
+{
+  "id": "tanstack-postgres",
+  "name": "Dewandra Grup",
+  "tagline": "Satu grup, lima kebutuhan harian.",
+  "description": "Dewandra Grup adalah bisnis yang bergerak di bidang pupuk, alat bangunan, alat tulis sekolah, alat elektronik, dan furnitur.",
+  "baseVersion": "0.1.0",
+  "framework": "tanstack-start",
+  "database": "postgresql"
+}
